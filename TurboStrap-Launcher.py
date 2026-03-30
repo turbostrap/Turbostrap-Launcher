@@ -19,8 +19,7 @@ import ctypes
 import pystray
 from pystray import MenuItem as TrayItem
 
-
-# ---- icon helpers (PyInstaller-safe) ----------------------------------------
+ 
 def resource_path(relative_path: str) -> str:
     if getattr(sys, "frozen", False):
         base_path = sys._MEIPASS
@@ -43,7 +42,7 @@ def init_app_icon():
             pass
 
 
-# ── FONT BOOTSTRAPPER ────────────────────────────────────────────────────────
+
 FONT_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Windows" / "Fonts"
 REQUIRED_FONTS = {
     "BebasNeue-Regular.ttf":        "https://github.com/google/fonts/raw/main/ofl/bebasneue/BebasNeue-Regular.ttf",
@@ -190,7 +189,7 @@ def bootstrap_fonts():
 bootstrap_fonts()
 
 
-# ── CONFIG ───────────────────────────────────────────────────────────────────
+
 APP_VERSION = "1.0.0"
 CONFIG_PATH = Path(os.getenv("APPDATA")) / "TurboStrap" / "config.json"
 CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -219,16 +218,13 @@ def save_config(cfg):
         json.dump(cfg, f, indent=2)
 
 
-# ── TURBOSTRAP-MANAGED ROBLOX INSTALL ────────────────────────────────────────
 TS_RBLX_BASE    = Path(os.getenv("LOCALAPPDATA")) / "TurboStrap" / "RblxVersions"
 TS_VERSION_FILE = Path(os.getenv("LOCALAPPDATA")) / "TurboStrap" / "current_version.txt"
 
 CDN_VERSION_URL = "https://clientsettingscdn.roblox.com/v2/client-version/WindowsPlayer"
 CDN_BASE        = "https://setup.rbxcdn.com"
 
-# ── KEY FIX: RobloxPlayerBeta.exe MUST receive this URI as its first argument.
-# Launching the exe with no args causes WinError 193 — it's not a plain executable,
-# it's a protocol handler that expects a roblox-player:// URI.
+
 ROBLOX_LAUNCH_URI = "roblox-player:1+launchmode:App"
 
 _SKIP_PACKAGES = {
@@ -236,7 +232,7 @@ _SKIP_PACKAGES = {
     "LibrariesQt5.zip",
 }
 
-# Exact subfolder each zip extracts into (mirrors Bloxstrap's PackageMap)
+
 PACKAGE_DIRS = {
     "RobloxApp.zip":                "",
     "redist.zip":                   "",
@@ -307,7 +303,7 @@ def download_roblox(version_hash, progress_cb=None, status_cb=None):
     dest_dir = TS_RBLX_BASE / version_hash
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Fetch manifest
+
     manifest_url = f"{CDN_BASE}/{version_hash}-rbxPkgManifest.txt"
     if status_cb:
         status_cb(f"Fetching manifest for {version_hash}...")
@@ -328,7 +324,7 @@ def download_roblox(version_hash, progress_cb=None, status_cb=None):
     if status_cb:
         status_cb(f"Found {len(packages)} packages to download")
 
-    # 2. Download + extract each package into the correct subfolder
+
     total = len(packages)
     for i, pkg in enumerate(packages):
         url      = f"{CDN_BASE}/{version_hash}-{pkg}"
@@ -363,7 +359,7 @@ def download_roblox(version_hash, progress_cb=None, status_cb=None):
                 status_cb(f"✗ Download failed ({pkg}): {e}")
             continue
 
-        # Extract to the correct subfolder from the package map
+
         subfolder = PACKAGE_DIRS.get(pkg, "")
         extract_to = (dest_dir / subfolder) if subfolder else dest_dir
         extract_to.mkdir(parents=True, exist_ok=True)
@@ -382,7 +378,7 @@ def download_roblox(version_hash, progress_cb=None, status_cb=None):
                 zip_path.unlink(missing_ok=True)
             continue
 
-    # 3. Write AppSettings.xml — required by Roblox to find its content folder
+
     app_settings = dest_dir / "AppSettings.xml"
     if not app_settings.exists():
         app_settings.write_text(
@@ -395,7 +391,7 @@ def download_roblox(version_hash, progress_cb=None, status_cb=None):
         if status_cb:
             status_cb("✓ Wrote AppSettings.xml")
 
-    # 4. Verify RobloxPlayerBeta.exe exists at the root
+
     exe_path = dest_dir / "RobloxPlayerBeta.exe"
     if not exe_path.exists():
         all_exes = list(dest_dir.rglob("*.exe"))
@@ -408,7 +404,7 @@ def download_roblox(version_hash, progress_cb=None, status_cb=None):
     if status_cb:
         status_cb(f"✓ RobloxPlayerBeta.exe  ({exe_path.stat().st_size:,} bytes)")
 
-    # 5. Save installed version
+
     TS_VERSION_FILE.parent.mkdir(parents=True, exist_ok=True)
     TS_VERSION_FILE.write_text(version_hash)
 
@@ -419,7 +415,7 @@ def download_roblox(version_hash, progress_cb=None, status_cb=None):
     return True
 
 
-# ── THEME ────────────────────────────────────────────────────────────────────
+
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
@@ -430,14 +426,13 @@ TEXT    = "#e0e0e0"
 MUTED   = "#999999"
 ACCENT  = "#ff3c00"
 
-# Old "lighting" menu used 19–21 — on Roblox's FRM scale those are the *high* end
-# (roughly 1–6 = low, 7–21 = high), so every option forced max-style quality.
+
 FFLAGS_LEGACY_FRM_QUALITY_LABELS = frozenset({
     "Voxel (Level 21)", "ShadowMap (Level 20)", "Future (Level 19)",
 })
 
 
-# ── FFLAG ORGANIZATION ───────────────────────────────────────────────────────
+
 FFLAG_CATEGORIES = {
     "Rendering": {
         "renderer": {
@@ -647,7 +642,7 @@ FFLAG_CATEGORIES = {
 }
 
 
-# ── FFLAG STORAGE ────────────────────────────────────────────────────────────
+
 FFLAGS_PATH = Path(os.getenv("APPDATA")) / "TurboStrap" / "fflags.json"
 
 def load_fflags():
@@ -724,7 +719,6 @@ def load_raw_fflags():
     return merged
 
 
-# ── HELPERS ──────────────────────────────────────────────────────────────────
 def lbl(parent, text, font=("Barlow", 13), color=TEXT, **kw):
     return ctk.CTkLabel(parent, text=text, font=font, text_color=color, **kw)
 
@@ -733,7 +727,7 @@ def btn(parent, text, cmd, font=("Barlow SemiBold", 13), **kw):
     return ctk.CTkButton(parent, text=text, command=cmd, font=font, **kw)
 
 
-# ── PAGES ────────────────────────────────────────────────────────────────────
+
 class LaunchPage(ctk.CTkFrame):
     def __init__(self, parent, cfg):
         super().__init__(parent, fg_color="transparent", corner_radius=0)
@@ -957,8 +951,7 @@ class LaunchPage(ctk.CTkFrame):
 
         try:
             apply_fflags_to_roblox(load_raw_fflags())
-            # Pass the roblox-player URI as argument AND set cwd to the install folder
-            # This is how Bloxstrap/the official bootstrapper launches the player
+
             proc = subprocess.Popen(
                 [roblox, ROBLOX_LAUNCH_URI],
                 cwd=str(Path(roblox).parent)
@@ -1294,11 +1287,7 @@ class TurboStrap(ctk.CTk):
 
         self.splash = show_splash(self, ACCENT, APP_VERSION)
         self.after(3000, self._end_splash)
-
-        try:
-            self.iconbitmap(resource_path("myicon.ico"))
-        except Exception:
-            pass
+        self.iconbitmap(resource_path("turbostrap.ico"))
 
     def _end_splash(self):
         try:
