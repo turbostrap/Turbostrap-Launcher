@@ -1060,7 +1060,7 @@ class SettingsPage(ctk.CTkFrame):
 
         lbl(scroll, "Settings", font=("Bebas Neue", 28)).pack(anchor="w", pady=(0, 20))
 
-        # --- Performance Card ---
+        
         card1 = ctk.CTkFrame(
             scroll,
             fg_color=CARD_BG,
@@ -1109,7 +1109,7 @@ class SettingsPage(ctk.CTkFrame):
            hover_color=_darken(ACCENT)
         ).pack(pady=10)
 
-        # --- Install Size ---
+       
         self.install_size_lbl = lbl(
             scroll,
             f"Install Size: {get_install_size()}",
@@ -1173,7 +1173,7 @@ class ThemePage(ctk.CTkFrame):
         lbl(scroll, "Customise the look of TurboStrap.",
             font=("Barlow", 12), color=MUTED).pack(anchor="w", pady=(0, 20))
 
-        # --- Accent colour card ---
+    
         accent_card = ctk.CTkFrame(scroll, fg_color=CARD_BG, corner_radius=8,
             border_width=1, border_color=BORDER)
         accent_card.pack(fill="x", pady=10)
@@ -1210,7 +1210,7 @@ class ThemePage(ctk.CTkFrame):
         btn(btn_row, "↺  Reset to Default", self._reset_accent,
             width=160, fg_color="#333", hover_color="#444").pack(side="left")
 
-        # --- Presets card ---
+    
         presets_card = ctk.CTkFrame(scroll, fg_color=CARD_BG, corner_radius=8,
             border_width=1, border_color=BORDER)
         presets_card.pack(fill="x", pady=10)
@@ -1246,7 +1246,7 @@ class ThemePage(ctk.CTkFrame):
             swatch.bind("<Button-1>", lambda e, c=color: self._apply_accent(c))
             lbl(cell, name, font=("Barlow", 10), color=MUTED).pack(pady=(4, 0))
 
-        # --- Save card ---
+      
         save_card = ctk.CTkFrame(scroll, fg_color=CARD_BG, corner_radius=8,
             border_width=1, border_color=BORDER)
         save_card.pack(fill="x", pady=10)
@@ -1315,7 +1315,7 @@ class FFlagsPage(ctk.CTkFrame):
         self.settings = load_fflags()
         self._active_tab = list(FFLAG_CATEGORIES.keys())[0]
 
-        # Header
+    
         header = ctk.CTkFrame(self, fg_color=CARD_BG, corner_radius=0,
             border_width=1, border_color=BORDER)
         header.pack(fill="x")
@@ -1328,12 +1328,12 @@ class FFlagsPage(ctk.CTkFrame):
         btn(inner, "🔄 Reset All", self._reset,
             width=120, fg_color="#2a2a2a", hover_color="#333").pack(side="right")
 
-        # Custom tab bar
+       
         tab_bar = ctk.CTkFrame(self, fg_color=BG, corner_radius=0,
             border_width=0)
         tab_bar.pack(fill="x")
 
-        # Inner pill container — centers the tabs
+        
         pill_bg = ctk.CTkFrame(tab_bar, fg_color="#000000", corner_radius=8)
         pill_bg.pack(fill="x", padx=20, pady=10)
 
@@ -1355,7 +1355,7 @@ class FFlagsPage(ctk.CTkFrame):
             tb.pack(side="left", expand=True, fill="x", padx=4, pady=4)
             self._tab_buttons[cat] = tb
 
-        # Content area — one frame per category
+       
         self._content_area = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
         self._content_area.pack(fill="both", expand=True, padx=0, pady=0)
 
@@ -1473,7 +1473,7 @@ class CustomFlagsPage(ctk.CTkFrame):
         self._flags = self._load()
         self._selected = set()
 
-        # Header
+       
         header = ctk.CTkFrame(self, fg_color=CARD_BG, corner_radius=0,
             border_width=1, border_color=BORDER)
         header.pack(fill="x")
@@ -1482,7 +1482,7 @@ class CustomFlagsPage(ctk.CTkFrame):
         lbl(inner, "CUSTOM ", font=("Bebas Neue", 28), color=TEXT).pack(side="left")
         lbl(inner, "FLAGS", font=("Bebas Neue", 28), color=ACCENT).pack(side="left")
 
-        # Toolbar
+        
         toolbar = ctk.CTkFrame(self, fg_color=BG, corner_radius=0)
         toolbar.pack(fill="x", padx=16, pady=(10, 0))
 
@@ -1497,12 +1497,12 @@ class CustomFlagsPage(ctk.CTkFrame):
         btn(toolbar, "📤  Export JSON", self._export_json,
             width=120, fg_color="#2a2a2a", hover_color="#333").pack(side="left")
 
-        # Total flags count
+  
         self._count_lbl = lbl(toolbar, f"Total Flags: {len(self._flags)}",
             font=("Barlow", 11), color=MUTED)
         self._count_lbl.pack(side="right", padx=10)
 
-        # Search bar
+       
         search_frame = ctk.CTkFrame(self, fg_color=CARD_BG, corner_radius=6,
             border_width=1, border_color=BORDER)
         search_frame.pack(fill="x", padx=16, pady=10)
@@ -1513,7 +1513,7 @@ class CustomFlagsPage(ctk.CTkFrame):
             fg_color="transparent", border_width=0,
             font=("Barlow", 12), height=36).pack(fill="x", padx=10)
 
-        # Column headers
+   
         col_header = ctk.CTkFrame(self, fg_color=BORDER, corner_radius=0)
         col_header.pack(fill="x", padx=16)
         ctk.CTkLabel(col_header, text="", width=30).pack(side="left", padx=(8, 0))
@@ -1524,12 +1524,12 @@ class CustomFlagsPage(ctk.CTkFrame):
         ctk.CTkLabel(col_header, text="Actions", font=("Barlow SemiBold", 12),
             text_color=MUTED, width=80).pack(side="right", padx=8)
 
-        # Scrollable flag list
+        
         self._list_frame = ctk.CTkScrollableFrame(self, fg_color="transparent",
             corner_radius=0)
         self._list_frame.pack(fill="both", expand=True, padx=16, pady=(0, 0))
 
-        # Apply button
+      
         apply_bar = ctk.CTkFrame(self, fg_color=CARD_BG, corner_radius=0,
             border_width=1, border_color=BORDER)
         apply_bar.pack(fill="x")
@@ -1542,7 +1542,7 @@ class CustomFlagsPage(ctk.CTkFrame):
         self._refresh_list()
 
     def _load(self):
-        # Load custom flags
+       
         path = Path(os.getenv("APPDATA")) / "TurboStrap" / "custom_flags.json"
         custom = {}
         if path.exists():
@@ -1552,15 +1552,15 @@ class CustomFlagsPage(ctk.CTkFrame):
             except Exception:
                 pass
     
-        # Merge in the currently active preset fflags so they show up too
+       
         preset = load_raw_fflags()
-        merged = {**preset, **custom}  # custom overrides preset if same key
+        merged = {**preset, **custom} 
         return merged
         
         
         
     def _save(self):
-        # Only save flags that are NOT already in the preset system
+      
         preset_keys = set(load_raw_fflags().keys())
         custom_only = {k: v for k, v in self._flags.items() if k not in preset_keys}
         path = Path(os.getenv("APPDATA")) / "TurboStrap" / "custom_flags.json"
@@ -1587,7 +1587,7 @@ class CustomFlagsPage(ctk.CTkFrame):
                 border_width=1, border_color=BORDER)
             row.pack(fill="x", pady=3)
 
-            # Checkbox
+            
             var = ctk.BooleanVar(value=flag_name in self._selected)
             def _on_check(v=var, n=flag_name):
                 if v.get():
@@ -1599,21 +1599,21 @@ class CustomFlagsPage(ctk.CTkFrame):
                 fg_color=ACCENT, hover_color=_darken(ACCENT),
                 border_color=BORDER).pack(side="left", padx=(10, 0), pady=10)
 
-            # Flag name (editable)
+            
             name_var = ctk.StringVar(value=flag_name)
             name_entry = ctk.CTkEntry(row, textvariable=name_var,
                 fg_color="transparent", border_width=0,
                 font=("Consolas", 12), text_color=TEXT)
             name_entry.pack(side="left", fill="x", expand=True, padx=8, pady=6)
 
-            # Value (editable)
+         
             val_var = ctk.StringVar(value=str(flag_value))
             val_entry = ctk.CTkEntry(row, textvariable=val_var,
                 fg_color="transparent", border_width=0,
                 font=("Consolas", 12), text_color=ACCENT, width=160)
             val_entry.pack(side="left", padx=8, pady=6)
 
-            # Save edits on focus out
+           
             def _on_edit(event, old=flag_name, nv=name_var, vv=val_var):
                 new_name = nv.get().strip()
                 new_val  = vv.get().strip()
@@ -1628,7 +1628,7 @@ class CustomFlagsPage(ctk.CTkFrame):
             name_entry.bind("<Return>", _on_edit)
             val_entry.bind("<Return>", _on_edit)
 
-            # Delete button
+           
             btn(row, "✕", lambda n=flag_name: self._delete_one(n),
                 width=36, height=28, fg_color="#333", hover_color="#c41213",
                 font=("Barlow", 11)).pack(side="right", padx=8, pady=6)
@@ -1736,7 +1736,7 @@ class CustomFlagsPage(ctk.CTkFrame):
 
     def _save_and_apply(self):
         self._save()
-        # Merge with preset fflags and apply
+       
         merged = load_raw_fflags()
         merged.update(self._flags)
         success = apply_fflags_to_roblox(merged)
