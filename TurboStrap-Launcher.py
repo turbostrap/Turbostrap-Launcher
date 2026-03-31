@@ -19,6 +19,51 @@ import ctypes
 import pystray
 from pystray import MenuItem as TrayItem
 
+def open_roblox_folder():
+    path = get_roblox_install_path()
+    if path and os.path.exists(path):
+        subprocess.Popen(f'explorer "{path}"')
+    else:
+        from tkinter import messagebox
+        messagebox.showerror("Error", "Roblox is not installed.")
+
+
+def get_roblox_install_path():
+    local_appdata = os.getenv("LOCALAPPDATA")
+    if not local_appdata:
+        return None
+
+    path = os.path.join(local_appdata, "TurboStrap")
+    return path if os.path.exists(path) else None
+
+
+def get_folder_size(path):
+    total = 0
+    for root, _, files in os.walk(path):
+        for f in files:
+            fp = os.path.join(root, f)
+            if os.path.exists(fp):
+                total += os.path.getsize(fp)
+    return total
+
+
+def format_size(size):
+    for unit in ["B", "KB", "MB", "GB"]:
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+    return f"{size:.2f} TB"
+
+
+def get_install_size():
+    path = get_roblox_install_path()
+    if not path:
+        return "Not Installed"
+
+    return format_size(get_folder_size(path))
+ 
+ 
+ 
  
 def resource_path(relative_path: str) -> str:
     if getattr(sys, "frozen", False):
@@ -125,19 +170,26 @@ def bootstrap_fonts():
 
     logo_cx, logo_cy = cx, card_y1 + 105
     logo_r = 55
-    outer.create_oval(
-        logo_cx - logo_r, logo_cy - logo_r,
-        logo_cx + logo_r, logo_cy + logo_r,
-        fill="#111", outline="#222", width=2)
-    outer.create_text(logo_cx, logo_cy, text="CE",
-        font=("Consolas", 28, "bold"), fill="#ff3c00")
+    try:
+        _bs_img = Image.open(resource_path("turbostrap.png")).resize(
+            (logo_r * 2, logo_r * 2), Image.LANCZOS)
+        _bs_photo = ImageTk.PhotoImage(_bs_img)
+        outer.create_image(logo_cx, logo_cy, anchor="center", image=_bs_photo)
+        outer._bs_photo = _bs_photo
+    except Exception:
+        outer.create_oval(
+            logo_cx - logo_r, logo_cy - logo_r,
+            logo_cx + logo_r, logo_cy + logo_r,
+            fill="#111", outline="#222", width=2)
+        outer.create_text(logo_cx, logo_cy, text="CE",
+            font=("Consolas", 28, "bold"), fill="#c41213")
 
     ring_r = logo_r + 10
     ring_bbox = [logo_cx - ring_r, logo_cy - ring_r,
                  logo_cx + ring_r, logo_cy + ring_r]
     outer.create_oval(*ring_bbox, outline="#222", width=3)
     arc = outer.create_arc(*ring_bbox, start=90, extent=0,
-        outline="#ff3c00", width=3, style="arc")
+        outline="#c41213", width=3, style="arc")
 
     outer.create_text(cx, logo_cy + 80, text="TurboStrap",
         font=("Consolas", 20, "bold"), fill="#f5f5f5")
@@ -160,7 +212,7 @@ def bootstrap_fonts():
             _angle[0] = (_angle[0] - 4) % 360
             progress_extent = int((_done[0] / max(total, 1)) * 360)
             start = (_angle[0] + 90) % 360
-            outer.itemconfig(arc, start=start, extent=max(20, progress_extent), outline="#ff3c00")
+            outer.itemconfig(arc, start=start, extent=max(20, progress_extent), outline="#c41213")
             splash.after(16, _spin)
 
     def _install():
@@ -190,16 +242,27 @@ bootstrap_fonts()
 
 
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.2"
 CONFIG_PATH = Path(os.getenv("APPDATA")) / "TurboStrap" / "config.json"
 CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+VERSION_URL = "https://fr.lowkey.nichesite.org/version.txt"
+
+def check_for_update():
+    try:
+        resp = requests.get(VERSION_URL, timeout=5)
+        resp.raise_for_status()
+        latest = resp.text.strip()
+        return latest if latest != APP_VERSION else None
+    except Exception:
+        return None
+        
 DEFAULT_CONFIG = {
     "fps_limit": 144,
     "fps_unlock": True,
     "memory_optimise": True,
     "launch_flags": "",
-    "accent_color": "#ff3c00",
+    "accent_color": "#c41213",
     "roblox_path": "",
     "auto_update": True,
 }
@@ -424,7 +487,7 @@ CARD_BG = "#0a0a0a"
 BORDER  = "#1a1a1a"
 TEXT    = "#e0e0e0"
 MUTED   = "#999999"
-ACCENT  = "#ff3c00"
+ACCENT  = "#c41213"
 
 
 FFLAGS_LEGACY_FRM_QUALITY_LABELS = frozenset({
@@ -726,8 +789,19 @@ def btn(parent, text, cmd, font=("Barlow SemiBold", 13), **kw):
     kw.setdefault("corner_radius", 6)
     return ctk.CTkButton(parent, text=text, command=cmd, font=font, **kw)
 
+def _darken(hex_color, factor=0.75):
+    hex_color = hex_color.lstrip("#")
+    r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+    r, g, b = int(r * factor), int(g * factor), int(b * factor)
+    return f"#{r:02x}{g:02x}{b:02x}"
 
-
+def _darken(hex_color, factor=0.75):
+    hex_color = hex_color.lstrip("#")
+    r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+    r, g, b = int(r * factor), int(g * factor), int(b * factor)
+    return f"#{r:02x}{g:02x}{b:02x}"
+    
+    
 class LaunchPage(ctk.CTkFrame):
     def __init__(self, parent, cfg):
         super().__init__(parent, fg_color="transparent", corner_radius=0)
@@ -792,7 +866,7 @@ class LaunchPage(ctk.CTkFrame):
 
         self.launch_btn = btn(self, "▶  LAUNCH ROBLOX", self._on_launch_click,
             font=("Bebas Neue", 22), height=54,
-            fg_color=ACCENT, hover_color="#cc3000")
+            fg_color=ACCENT, hover_color=_darken(ACCENT))
         self.launch_btn.pack(fill="x", padx=30, pady=(0, 2))
 
         btn(self, "🗑  WIPE & REDOWNLOAD", self._wipe_and_redownload,
@@ -971,9 +1045,13 @@ class LaunchPage(ctk.CTkFrame):
                 state="normal", text="▶  LAUNCH ROBLOX"))
 
 
+
+
 class SettingsPage(ctk.CTkFrame):
+
     def __init__(self, parent, cfg, refresh_cb):
         super().__init__(parent, fg_color="transparent", corner_radius=0)
+
         self.cfg = cfg
         self.refresh_cb = refresh_cb
 
@@ -982,80 +1060,71 @@ class SettingsPage(ctk.CTkFrame):
 
         lbl(scroll, "Settings", font=("Bebas Neue", 28)).pack(anchor="w", pady=(0, 20))
 
-        path_card = ctk.CTkFrame(scroll, fg_color=CARD_BG, corner_radius=8,
-            border_width=1, border_color=BORDER)
-        path_card.pack(fill="x", pady=10)
-
-        lbl(path_card, "Roblox Executable", font=("Barlow SemiBold", 16)).pack(
-            anchor="w", padx=20, pady=(15, 4))
-        lbl(path_card, "Set a custom path if TurboStrap picks up the wrong Roblox install.",
-            font=("Barlow", 11), color=MUTED, wraplength=560, justify="left").pack(
-            anchor="w", padx=20, pady=(0, 10))
-
-        path_row = ctk.CTkFrame(path_card, fg_color="transparent")
-        path_row.pack(fill="x", padx=20, pady=(0, 15))
-
-        self.path_entry = ctk.CTkEntry(path_row, font=("Barlow", 12),
-            fg_color=BG, border_color=BORDER, border_width=1,
-            placeholder_text="Auto-detect  (leave blank to auto-detect)",
-            height=36)
-        self.path_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
-
-        saved_path = cfg.get("roblox_path", "")
-        if saved_path:
-            self.path_entry.insert(0, saved_path)
-
-        btn(path_row, "Browse…", self._browse_roblox,
-            width=100, fg_color=ACCENT, hover_color="#cc3000").pack(side="left")
-
-        btn(path_card, "✕  Clear Custom Path", self._clear_path,
-            font=("Barlow", 11), width=160,
-            fg_color="#333", hover_color="#444").pack(anchor="w", padx=20, pady=(0, 15))
-
-        card1 = ctk.CTkFrame(scroll, fg_color=CARD_BG, corner_radius=8,
-            border_width=1, border_color=BORDER)
+        # --- Performance Card ---
+        card1 = ctk.CTkFrame(
+            scroll,
+            fg_color=CARD_BG,
+            corner_radius=8,
+            border_width=1,
+            border_color=BORDER
+        )
         card1.pack(fill="x", pady=10)
-        lbl(card1, "Performance", font=("Barlow SemiBold", 16)).pack(anchor="w", padx=20, pady=(15, 10))
+
+        lbl(card1, "Performance", font=("Barlow SemiBold", 16)).pack(
+            anchor="w", padx=20, pady=(15, 10)
+        )
 
         self.fps_unlock_var = ctk.BooleanVar(value=cfg.get("fps_unlock", True))
-        ctk.CTkSwitch(card1, text="Unlock FPS Cap", variable=self.fps_unlock_var,
-            onvalue=True, offvalue=False, progress_color=ACCENT, button_color=TEXT,
-            fg_color=BORDER, font=("Barlow", 13)).pack(anchor="w", padx=20, pady=5)
+        ctk.CTkSwitch(
+            card1,
+            text="Unlock FPS Cap",
+            variable=self.fps_unlock_var,
+            onvalue=True,
+            offvalue=False,
+            progress_color=ACCENT,
+            button_color=TEXT,
+            fg_color=BORDER,
+            font=("Barlow", 13)
+        ).pack(anchor="w", padx=20, pady=5)
 
         self.mem_opt_var = ctk.BooleanVar(value=cfg.get("memory_optimise", True))
-        ctk.CTkSwitch(card1, text="Memory Optimization", variable=self.mem_opt_var,
-            onvalue=True, offvalue=False, progress_color=ACCENT, button_color=TEXT,
-            fg_color=BORDER, font=("Barlow", 13)).pack(anchor="w", padx=20, pady=(5, 15))
+        ctk.CTkSwitch(
+            card1,
+            text="Memory Optimization",
+            variable=self.mem_opt_var,
+            onvalue=True,
+            offvalue=False,
+            progress_color=ACCENT,
+            button_color=TEXT,
+            fg_color=BORDER,
+            font=("Barlow", 13)
+        ).pack(anchor="w", padx=20, pady=(5, 15))
 
-        btn(scroll, "💾  Save Settings", self._save,
-            width=200, fg_color=ACCENT, hover_color="#cc3000").pack(pady=20)
+        btn(
+            scroll,
+            "📂 Open Roblox Folder",
+            open_roblox_folder,
+            width=200,
+            fg_color=ACCENT,
+           hover_color=_darken(ACCENT)
+        ).pack(pady=10)
 
-    def _browse_roblox(self):
-        from tkinter import filedialog
-        path = filedialog.askopenfilename(
-            title="Select Roblox Executable",
-            filetypes=[("Executable", "*.exe"), ("All files", "*.*")],
-            initialdir=str(Path(os.getenv("LOCALAPPDATA")) / "Roblox")
+        # --- Install Size ---
+        self.install_size_lbl = lbl(
+            scroll,
+            f"Install Size: {get_install_size()}",
+            font=("Barlow", 12),
+            color="white"
         )
-        if path:
-            self.path_entry.delete(0, "end")
-            self.path_entry.insert(0, path)
+        self.install_size_lbl.pack(anchor="w", padx=315, pady=0)
 
-    def _clear_path(self):
-        self.path_entry.delete(0, "end")
-        self.cfg["roblox_path"] = ""
-        save_config(self.cfg)
-        self.refresh_cb()
-        messagebox.showinfo("TurboStrap", "Custom path cleared.")
 
     def _save(self):
         self.cfg["fps_unlock"] = self.fps_unlock_var.get()
         self.cfg["memory_optimise"] = self.mem_opt_var.get()
-        self.cfg["roblox_path"] = self.path_entry.get().strip()
         save_config(self.cfg)
         messagebox.showinfo("TurboStrap", "Settings saved!")
         self.refresh_cb()
-
 
 class LogsPage(ctk.CTkFrame):
     def __init__(self, parent):
@@ -1088,20 +1157,149 @@ class AboutPage(ctk.CTkFrame):
             "✓ Minimize to Tray"
         ]:
             lbl(card, feat, font=("Barlow", 12), color=TEXT).pack(pady=2)
+class ThemePage(ctk.CTkFrame):
+    def __init__(self, parent, cfg, refresh_cb):
+        super().__init__(parent, fg_color="transparent", corner_radius=0)
+        self.cfg = cfg
+        self.refresh_cb = refresh_cb
 
+        scroll = ctk.CTkScrollableFrame(self, fg_color="transparent", corner_radius=0)
+        scroll.pack(fill="both", expand=True, padx=20, pady=20)
+
+        title_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        title_frame.pack(anchor="w", pady=(0, 20))
+        lbl(title_frame, "THEME ", font=("Bebas Neue", 42), color=TEXT).pack(side="left")
+        lbl(title_frame, "EDITOR", font=("Bebas Neue", 42), color=ACCENT).pack(side="left")
+        lbl(scroll, "Customise the look of TurboStrap.",
+            font=("Barlow", 12), color=MUTED).pack(anchor="w", pady=(0, 20))
+
+        # --- Accent colour card ---
+        accent_card = ctk.CTkFrame(scroll, fg_color=CARD_BG, corner_radius=8,
+            border_width=1, border_color=BORDER)
+        accent_card.pack(fill="x", pady=10)
+
+        lbl(accent_card, "Accent Colour", font=("Barlow SemiBold", 16)).pack(
+            anchor="w", padx=20, pady=(15, 4))
+        lbl(accent_card, "Changes the primary accent colour throughout the app. Restart to apply everywhere.",
+            font=("Barlow", 11), color=MUTED, wraplength=560, justify="left").pack(
+            anchor="w", padx=20, pady=(0, 14))
+
+        preview_row = ctk.CTkFrame(accent_card, fg_color="transparent")
+        preview_row.pack(fill="x", padx=20, pady=(0, 6))
+
+        self._swatch = ctk.CTkFrame(preview_row, width=48, height=48,
+            corner_radius=8, fg_color=cfg.get("accent_color", ACCENT))
+        self._swatch.pack(side="left", padx=(0, 14))
+        self._swatch.pack_propagate(False)
+
+        info_col = ctk.CTkFrame(preview_row, fg_color="transparent")
+        info_col.pack(side="left")
+        lbl(info_col, "Current colour", font=("Barlow", 10), color=MUTED).pack(anchor="w")
+        self._hex_lbl = lbl(info_col, cfg.get("accent_color", ACCENT).upper(),
+            font=("Consolas", 15), color=TEXT)
+        self._hex_lbl.pack(anchor="w")
+        self._hover_lbl = lbl(info_col,
+            f"Hover: {_darken(cfg.get('accent_color', ACCENT)).upper()}",
+            font=("Consolas", 11), color=MUTED)
+        self._hover_lbl.pack(anchor="w")
+
+        btn_row = ctk.CTkFrame(accent_card, fg_color="transparent")
+        btn_row.pack(fill="x", padx=20, pady=(10, 18))
+        btn(btn_row, "🎨  Pick Colour", self._pick_accent,
+            width=140, fg_color=ACCENT, hover_color=_darken(ACCENT)).pack(side="left", padx=(0, 8))
+        btn(btn_row, "↺  Reset to Default", self._reset_accent,
+            width=160, fg_color="#333", hover_color="#444").pack(side="left")
+
+        # --- Presets card ---
+        presets_card = ctk.CTkFrame(scroll, fg_color=CARD_BG, corner_radius=8,
+            border_width=1, border_color=BORDER)
+        presets_card.pack(fill="x", pady=10)
+
+        lbl(presets_card, "Colour Presets", font=("Barlow SemiBold", 16)).pack(
+            anchor="w", padx=20, pady=(15, 4))
+        lbl(presets_card, "Click a preset to instantly apply it.",
+            font=("Barlow", 11), color=MUTED).pack(anchor="w", padx=20, pady=(0, 14))
+
+        presets_grid = ctk.CTkFrame(presets_card, fg_color="transparent")
+        presets_grid.pack(fill="x", padx=20, pady=(0, 18))
+
+        self._presets = [
+            ("TurboRed",    "#c41213"),
+            ("Flame",       "#ff3c00"),
+            ("Cobalt",      "#1e6fff"),
+            ("Emerald",     "#00c850"),
+            ("Violet",      "#8b5cf6"),
+            ("Gold",        "#f59e0b"),
+            ("Cyan",        "#06b6d4"),
+            ("Rose",        "#f43f5e"),
+        ]
+
+        for i, (name, color) in enumerate(self._presets):
+            col = i % 4
+            row = i // 4
+            cell = ctk.CTkFrame(presets_grid, fg_color="transparent")
+            cell.grid(row=row, column=col, padx=8, pady=8, sticky="w")
+            swatch = ctk.CTkFrame(cell, width=32, height=32,
+                corner_radius=6, fg_color=color, cursor="hand2")
+            swatch.pack()
+            swatch.pack_propagate(False)
+            swatch.bind("<Button-1>", lambda e, c=color: self._apply_accent(c))
+            lbl(cell, name, font=("Barlow", 10), color=MUTED).pack(pady=(4, 0))
+
+        # --- Save card ---
+        save_card = ctk.CTkFrame(scroll, fg_color=CARD_BG, corner_radius=8,
+            border_width=1, border_color=BORDER)
+        save_card.pack(fill="x", pady=10)
+        lbl(save_card, "Changes are previewed live but require a restart to apply everywhere.",
+            font=("Barlow", 11), color=MUTED, wraplength=560, justify="left").pack(
+            anchor="w", padx=20, pady=(15, 10))
+        btn(save_card, "💾  Save Theme", self._save,
+            width=180, fg_color=ACCENT, hover_color=_darken(ACCENT)).pack(
+            anchor="w", padx=20, pady=(0, 18))
+
+    def _pick_accent(self):
+        current = self.cfg.get("accent_color", ACCENT)
+        result = colorchooser.askcolor(color=current, title="Pick Accent Colour")
+        if result and result[1]:
+            self._apply_accent(result[1].lower())
+
+    def _reset_accent(self):
+        self._apply_accent("#c41213")
+
+    def _apply_accent(self, color):
+        global ACCENT
+        ACCENT = color
+        self.cfg["accent_color"] = color
+        self._swatch.configure(fg_color=color)
+        self._hex_lbl.configure(text=color.upper())
+        self._hover_lbl.configure(text=f"Hover: {_darken(color).upper()}")
+
+    def _save(self):
+        global ACCENT
+        ACCENT = self.cfg.get("accent_color", ACCENT)
+        save_config(self.cfg)
+        messagebox.showinfo("TurboStrap", "Theme applied!")
+        self.refresh_cb()
 
 class Sidebar(ctk.CTkFrame):
     def __init__(self, parent, nav_cb):
         super().__init__(parent, fg_color=BG, corner_radius=0, width=220)
         self.nav_cb = nav_cb
-        logo_frame = ctk.CTkFrame(self, fg_color="transparent", height=80)
-        logo_frame.pack(fill="x", pady=20)
-        lbl(logo_frame, "CE", font=("Bebas Neue", 32), color=ACCENT).pack()
+        logo_frame = ctk.CTkFrame(self, fg_color="transparent")
+        logo_frame.pack(fill="x", pady=(20, 10))
         lbl(logo_frame, "TurboStrap", font=("Barlow SemiBold", 14)).pack()
+
+        
+        
+
+        
+        
         for text, page in [
             ("🚀 LAUNCH",     "LAUNCH"),
             ("⚙️  SETTINGS",  "SETTINGS"),
             ("🔧 FAST FLAGS", "FFLAGS"),
+            ("🛠  CUSTOM FLAGS", "CUSTOM"),
+            ("🎨 THEME",      "THEME"),
             ("📊 LOGS",       "LOGS"),
             ("ℹ️  ABOUT",     "ABOUT"),
         ]:
@@ -1115,39 +1313,82 @@ class FFlagsPage(ctk.CTkFrame):
         super().__init__(parent, fg_color="transparent", corner_radius=0)
         self.cfg = cfg
         self.settings = load_fflags()
+        self._active_tab = list(FFLAG_CATEGORIES.keys())[0]
 
-        header = ctk.CTkFrame(self, fg_color="transparent", height=60)
-        header.pack(fill="x", padx=20, pady=(20, 10))
-        lbl(header, "Fast Flags Configuration", font=("Bebas Neue", 28)).pack(side="left")
-        btn_frame = ctk.CTkFrame(header, fg_color="transparent")
-        btn_frame.pack(side="right")
-        btn(btn_frame, "💾 Save & Apply", self._save,
-            width=140, fg_color=ACCENT, hover_color="#cc3000").pack(side="right", padx=5)
-        btn(btn_frame, "🔄 Reset All", self._reset,
-            width=120, fg_color="#444", hover_color="#333").pack(side="right")
+        # Header
+        header = ctk.CTkFrame(self, fg_color=CARD_BG, corner_radius=0,
+            border_width=1, border_color=BORDER)
+        header.pack(fill="x")
+        inner = ctk.CTkFrame(header, fg_color="transparent")
+        inner.pack(fill="x", padx=24, pady=14)
+        lbl(inner, "FAST FLAGS ", font=("Bebas Neue", 28), color=TEXT).pack(side="left")
+        lbl(inner, "CONFIGURATION", font=("Bebas Neue", 28), color=ACCENT).pack(side="left")
+        btn(inner, "💾 Save & Apply", self._save,
+            width=140, fg_color=ACCENT, hover_color=_darken(ACCENT)).pack(side="right", padx=(8, 0))
+        btn(inner, "🔄 Reset All", self._reset,
+            width=120, fg_color="#2a2a2a", hover_color="#333").pack(side="right")
 
-        self.tabview = ctk.CTkTabview(self, fg_color=CARD_BG, corner_radius=8,
-            border_width=1, border_color=BORDER,
-            segmented_button_fg_color=BORDER,
-            segmented_button_selected_color=ACCENT,
-            segmented_button_selected_hover_color="#cc3000")
-        self.tabview.pack(fill="both", expand=True, padx=20, pady=(10, 20))
+        # Custom tab bar
+        tab_bar = ctk.CTkFrame(self, fg_color=BG, corner_radius=0,
+            border_width=0)
+        tab_bar.pack(fill="x")
+
+        # Inner pill container — centers the tabs
+        pill_bg = ctk.CTkFrame(tab_bar, fg_color="#000000", corner_radius=8)
+        pill_bg.pack(fill="x", padx=20, pady=10)
+
+        self._tab_buttons = {}
+        categories = list(FFLAG_CATEGORIES.keys())
+        for i, cat in enumerate(categories):
+            is_active = cat == self._active_tab
+            tb = ctk.CTkButton(
+                pill_bg,
+                text=cat,
+                font=("Barlow SemiBold", 12),
+                fg_color=ACCENT if is_active else "transparent",
+                hover_color=_darken(ACCENT) if is_active else "#1e1e1e",
+                text_color=TEXT if is_active else MUTED,
+                corner_radius=6,
+                height=32,
+                command=lambda c=cat: self._switch_tab(c),
+            )
+            tb.pack(side="left", expand=True, fill="x", padx=4, pady=4)
+            self._tab_buttons[cat] = tb
+
+        # Content area — one frame per category
+        self._content_area = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
+        self._content_area.pack(fill="both", expand=True, padx=0, pady=0)
 
         self.widgets = {}
+        self._tab_frames = {}
         for category_name, category_data in FFLAG_CATEGORIES.items():
-            tab = self.tabview.add(category_name)
-            scroll = ctk.CTkScrollableFrame(tab, fg_color="transparent")
-            scroll.pack(fill="both", expand=True, padx=10, pady=10)
+            frame = ctk.CTkScrollableFrame(self._content_area, fg_color="transparent")
+            self._tab_frames[category_name] = frame
             for setting_key, setting_data in category_data.items():
-                self._render_setting(scroll, category_name, setting_key, setting_data)
+                self._render_setting(frame, category_name, setting_key, setting_data)
+
+        self._switch_tab(self._active_tab)
+
+    def _switch_tab(self, name):
+        self._active_tab = name
+        for cat, frame in self._tab_frames.items():
+            frame.pack_forget()
+        self._tab_frames[name].pack(fill="both", expand=True, padx=16, pady=(8, 16))
+        for cat, tb in self._tab_buttons.items():
+            is_active = cat == name
+            tb.configure(
+                fg_color=ACCENT if is_active else "transparent",
+                hover_color=_darken(ACCENT) if is_active else "#1e1e1e",
+                text_color=TEXT if is_active else MUTED,
+            )
 
     def _render_setting(self, parent, category, key, data):
         full_key = f"{category}.{key}"
-        container = ctk.CTkFrame(parent, fg_color=BG, corner_radius=6,
+        container = ctk.CTkFrame(parent, fg_color=CARD_BG, corner_radius=8,
             border_width=1, border_color=BORDER)
-        container.pack(fill="x", pady=8, padx=5)
+        container.pack(fill="x", pady=6, padx=4)
         header_row = ctk.CTkFrame(container, fg_color="transparent")
-        header_row.pack(fill="x", padx=15, pady=(12, 8))
+        header_row.pack(fill="x", padx=15, pady=(12, 4))
         lbl(header_row, data["label"], font=("Barlow SemiBold", 14)).pack(side="left")
         lbl(container, data["desc"], font=("Barlow", 11), color=MUTED,
             wraplength=600, justify="left").pack(anchor="w", padx=15, pady=(0, 10))
@@ -1174,7 +1415,7 @@ class FFlagsPage(ctk.CTkFrame):
             ctk.CTkOptionMenu(container, variable=var,
                 values=list(data["options"].keys()),
                 fg_color=BORDER, button_color=ACCENT,
-                button_hover_color="#cc3000",
+                button_hover_color=_darken(ACCENT),
                 dropdown_fg_color=CARD_BG,
                 font=("Barlow", 12), width=300).pack(anchor="w", padx=15, pady=(0, 12))
 
@@ -1225,7 +1466,287 @@ class FFlagsPage(ctk.CTkFrame):
                 messagebox.showinfo("TurboStrap",
                     "All flags reset in TurboStrap. Open Save & Apply once Roblox is installed to clear overrides on disk.")
 
+class CustomFlagsPage(ctk.CTkFrame):
+    def __init__(self, parent, cfg):
+        super().__init__(parent, fg_color="transparent", corner_radius=0)
+        self.cfg = cfg
+        self._flags = self._load()
+        self._selected = set()
 
+        # Header
+        header = ctk.CTkFrame(self, fg_color=CARD_BG, corner_radius=0,
+            border_width=1, border_color=BORDER)
+        header.pack(fill="x")
+        inner = ctk.CTkFrame(header, fg_color="transparent")
+        inner.pack(fill="x", padx=24, pady=14)
+        lbl(inner, "CUSTOM ", font=("Bebas Neue", 28), color=TEXT).pack(side="left")
+        lbl(inner, "FLAGS", font=("Bebas Neue", 28), color=ACCENT).pack(side="left")
+
+        # Toolbar
+        toolbar = ctk.CTkFrame(self, fg_color=BG, corner_radius=0)
+        toolbar.pack(fill="x", padx=16, pady=(10, 0))
+
+        btn(toolbar, "➕  Add Flag", self._add_flag,
+            width=110, fg_color=ACCENT, hover_color=_darken(ACCENT)).pack(side="left", padx=(0, 6))
+        btn(toolbar, "🗑  Delete Selected", self._delete_selected,
+            width=140, fg_color="#2a2a2a", hover_color="#333").pack(side="left", padx=(0, 6))
+        btn(toolbar, "🗑  Delete All", self._delete_all,
+            width=110, fg_color="#2a2a2a", hover_color="#333").pack(side="left", padx=(0, 6))
+        btn(toolbar, "📥  Import JSON", self._import_json,
+            width=120, fg_color="#2a2a2a", hover_color="#333").pack(side="left", padx=(0, 6))
+        btn(toolbar, "📤  Export JSON", self._export_json,
+            width=120, fg_color="#2a2a2a", hover_color="#333").pack(side="left")
+
+        # Total flags count
+        self._count_lbl = lbl(toolbar, f"Total Flags: {len(self._flags)}",
+            font=("Barlow", 11), color=MUTED)
+        self._count_lbl.pack(side="right", padx=10)
+
+        # Search bar
+        search_frame = ctk.CTkFrame(self, fg_color=CARD_BG, corner_radius=6,
+            border_width=1, border_color=BORDER)
+        search_frame.pack(fill="x", padx=16, pady=10)
+        self._search_var = ctk.StringVar()
+        self._search_var.trace_add("write", lambda *a: self._refresh_list())
+        ctk.CTkEntry(search_frame, textvariable=self._search_var,
+            placeholder_text="🔍  Search flags...",
+            fg_color="transparent", border_width=0,
+            font=("Barlow", 12), height=36).pack(fill="x", padx=10)
+
+        # Column headers
+        col_header = ctk.CTkFrame(self, fg_color=BORDER, corner_radius=0)
+        col_header.pack(fill="x", padx=16)
+        ctk.CTkLabel(col_header, text="", width=30).pack(side="left", padx=(8, 0))
+        ctk.CTkLabel(col_header, text="Flag Name", font=("Barlow SemiBold", 12),
+            text_color=MUTED, anchor="w").pack(side="left", fill="x", expand=True, padx=8, pady=6)
+        ctk.CTkLabel(col_header, text="Value", font=("Barlow SemiBold", 12),
+            text_color=MUTED, anchor="w", width=160).pack(side="left", padx=8)
+        ctk.CTkLabel(col_header, text="Actions", font=("Barlow SemiBold", 12),
+            text_color=MUTED, width=80).pack(side="right", padx=8)
+
+        # Scrollable flag list
+        self._list_frame = ctk.CTkScrollableFrame(self, fg_color="transparent",
+            corner_radius=0)
+        self._list_frame.pack(fill="both", expand=True, padx=16, pady=(0, 0))
+
+        # Apply button
+        apply_bar = ctk.CTkFrame(self, fg_color=CARD_BG, corner_radius=0,
+            border_width=1, border_color=BORDER)
+        apply_bar.pack(fill="x")
+        lbl(apply_bar, "Changes apply on next Roblox launch.",
+            font=("Barlow", 11), color=MUTED).pack(side="left", padx=20, pady=12)
+        btn(apply_bar, "💾  Save & Apply", self._save_and_apply,
+            width=160, fg_color=ACCENT, hover_color=_darken(ACCENT)).pack(
+            side="right", padx=20, pady=10)
+
+        self._refresh_list()
+
+    def _load(self):
+        # Load custom flags
+        path = Path(os.getenv("APPDATA")) / "TurboStrap" / "custom_flags.json"
+        custom = {}
+        if path.exists():
+            try:
+                with open(path) as f:
+                    custom = json.load(f)
+            except Exception:
+                pass
+    
+        # Merge in the currently active preset fflags so they show up too
+        preset = load_raw_fflags()
+        merged = {**preset, **custom}  # custom overrides preset if same key
+        return merged
+        
+        
+        
+    def _save(self):
+        # Only save flags that are NOT already in the preset system
+        preset_keys = set(load_raw_fflags().keys())
+        custom_only = {k: v for k, v in self._flags.items() if k not in preset_keys}
+        path = Path(os.getenv("APPDATA")) / "TurboStrap" / "custom_flags.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(custom_only, f, indent=2)
+
+    def _refresh_list(self):
+        for w in self._list_frame.winfo_children():
+            w.destroy()
+
+        query = self._search_var.get().lower().strip()
+        filtered = {k: v for k, v in self._flags.items()
+                    if query in k.lower() or query in str(v).lower()}
+
+        if not filtered:
+            lbl(self._list_frame, "No flags found. Click '➕ Add Flag' to get started.",
+                font=("Barlow", 12), color=MUTED).pack(pady=40)
+            self._count_lbl.configure(text=f"Total Flags: {len(self._flags)}")
+            return
+
+        for flag_name, flag_value in filtered.items():
+            row = ctk.CTkFrame(self._list_frame, fg_color=CARD_BG, corner_radius=6,
+                border_width=1, border_color=BORDER)
+            row.pack(fill="x", pady=3)
+
+            # Checkbox
+            var = ctk.BooleanVar(value=flag_name in self._selected)
+            def _on_check(v=var, n=flag_name):
+                if v.get():
+                    self._selected.add(n)
+                else:
+                    self._selected.discard(n)
+            ctk.CTkCheckBox(row, text="", variable=var, command=_on_check,
+                width=30, checkbox_width=16, checkbox_height=16,
+                fg_color=ACCENT, hover_color=_darken(ACCENT),
+                border_color=BORDER).pack(side="left", padx=(10, 0), pady=10)
+
+            # Flag name (editable)
+            name_var = ctk.StringVar(value=flag_name)
+            name_entry = ctk.CTkEntry(row, textvariable=name_var,
+                fg_color="transparent", border_width=0,
+                font=("Consolas", 12), text_color=TEXT)
+            name_entry.pack(side="left", fill="x", expand=True, padx=8, pady=6)
+
+            # Value (editable)
+            val_var = ctk.StringVar(value=str(flag_value))
+            val_entry = ctk.CTkEntry(row, textvariable=val_var,
+                fg_color="transparent", border_width=0,
+                font=("Consolas", 12), text_color=ACCENT, width=160)
+            val_entry.pack(side="left", padx=8, pady=6)
+
+            # Save edits on focus out
+            def _on_edit(event, old=flag_name, nv=name_var, vv=val_var):
+                new_name = nv.get().strip()
+                new_val  = vv.get().strip()
+                if not new_name:
+                    return
+                if old in self._flags:
+                    del self._flags[old]
+                self._flags[new_name] = new_val
+                self._save()
+            name_entry.bind("<FocusOut>", _on_edit)
+            val_entry.bind("<FocusOut>", _on_edit)
+            name_entry.bind("<Return>", _on_edit)
+            val_entry.bind("<Return>", _on_edit)
+
+            # Delete button
+            btn(row, "✕", lambda n=flag_name: self._delete_one(n),
+                width=36, height=28, fg_color="#333", hover_color="#c41213",
+                font=("Barlow", 11)).pack(side="right", padx=8, pady=6)
+
+        self._count_lbl.configure(text=f"Total Flags: {len(self._flags)}")
+
+    def _add_flag(self):
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Add Flag")
+        dialog.geometry("420x200")
+        dialog.configure(fg_color=BG)
+        dialog.resizable(False, False)
+        dialog.grab_set()
+        dialog.lift()
+
+        lbl(dialog, "Flag Name", font=("Barlow SemiBold", 13)).pack(anchor="w", padx=20, pady=(16, 2))
+        name_entry = ctk.CTkEntry(dialog, font=("Consolas", 12),
+            fg_color=CARD_BG, border_color=BORDER, border_width=1, height=34)
+        name_entry.pack(fill="x", padx=20)
+
+        lbl(dialog, "Value", font=("Barlow SemiBold", 13)).pack(anchor="w", padx=20, pady=(10, 2))
+        val_entry = ctk.CTkEntry(dialog, font=("Consolas", 12),
+            fg_color=CARD_BG, border_color=BORDER, border_width=1, height=34)
+        val_entry.pack(fill="x", padx=20)
+
+        def _confirm():
+            name = name_entry.get().strip()
+            val  = val_entry.get().strip()
+            if not name:
+                return
+            self._flags[name] = val
+            self._save()
+            self._refresh_list()
+            dialog.destroy()
+
+        btn(dialog, "Add Flag", _confirm,
+            fg_color=ACCENT, hover_color=_darken(ACCENT)).pack(pady=14)
+        name_entry.focus()
+        val_entry.bind("<Return>", lambda e: _confirm())
+
+    def _delete_one(self, name):
+        if name in self._flags:
+            del self._flags[name]
+            self._selected.discard(name)
+            self._save()
+            self._refresh_list()
+
+    def _delete_selected(self):
+        if not self._selected:
+            messagebox.showinfo("TurboStrap", "No flags selected.")
+            return
+        if messagebox.askyesno("Delete Selected",
+                f"Delete {len(self._selected)} selected flag(s)?"):
+            for name in list(self._selected):
+                self._flags.pop(name, None)
+            self._selected.clear()
+            self._save()
+            self._refresh_list()
+
+    def _delete_all(self):
+        if not self._flags:
+            return
+        if messagebox.askyesno("Delete All", "Delete ALL custom flags?"):
+            self._flags.clear()
+            self._selected.clear()
+            self._save()
+            self._refresh_list()
+
+    def _import_json(self):
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            title="Import Flags JSON",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if not path:
+            return
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                messagebox.showerror("Import Failed", "JSON must be a flat key-value object.")
+                return
+            self._flags.update({k: str(v) for k, v in data.items()})
+            self._save()
+            self._refresh_list()
+            messagebox.showinfo("TurboStrap", f"✓ Imported {len(data)} flags.")
+        except Exception as e:
+            messagebox.showerror("Import Failed", str(e))
+
+    def _export_json(self):
+        from tkinter import filedialog
+        path = filedialog.asksaveasfilename(
+            title="Export Flags JSON",
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json")]
+        )
+        if not path:
+            return
+        try:
+            with open(path, "w") as f:
+                json.dump(self._flags, f, indent=2)
+            messagebox.showinfo("TurboStrap", f"✓ Exported {len(self._flags)} flags.")
+        except Exception as e:
+            messagebox.showerror("Export Failed", str(e))
+
+    def _save_and_apply(self):
+        self._save()
+        # Merge with preset fflags and apply
+        merged = load_raw_fflags()
+        merged.update(self._flags)
+        success = apply_fflags_to_roblox(merged)
+        if success:
+            messagebox.showinfo("TurboStrap",
+                f"✓ Applied {len(merged)} total flags ({len(self._flags)} custom).\n\n"
+                "Restart Roblox for changes to take effect.")
+        else:
+            messagebox.showwarning("TurboStrap",
+                "⚠ Saved but couldn't find Roblox install to write ClientAppSettings.")
 def show_splash(master, accent, version):
     import tkinter as tk
     W, H = 520, 280
@@ -1245,7 +1766,7 @@ def show_splash(master, accent, version):
     splash.after(200, lambda: splash.attributes("-topmost", False))
 
     try:
-        response = requests.get("https://fr.lowkey.nichesite.org/splash.jpg", timeout=5)
+        response = requests.get("https://fr.lowkey.nichesite.org/splash_updated.jpg", timeout=5)
         img = Image.open(BytesIO(response.content)).resize((W, H), Image.LANCZOS)
     except Exception:
         img = Image.new("RGB", (W, H), "#050505")
@@ -1258,16 +1779,39 @@ def show_splash(master, accent, version):
     canvas.bg_photo = bg_photo
 
     bx, by = W // 2, H // 2 - 40
-    size = 80
-    canvas.create_rectangle(bx-size//2, by-size//2, bx+size//2, by+size//2, outline=accent, width=2)
-    canvas.create_text(bx, by, text="CE", font=("Bebas Neue", 32), fill=accent)
+    try:
+        _splash_img = Image.open(resource_path("turbostrap.png")).resize((100, 100), Image.LANCZOS)
+        _splash_photo = ImageTk.PhotoImage(_splash_img)
+        canvas.create_image(bx, by, anchor="center", image=_splash_photo)
+        canvas._splash_photo = _splash_photo
+    except Exception:
+        size = 80
+        canvas.create_rectangle(bx-size//2, by-size//2, bx+size//2, by+size//2, outline=accent, width=2)
+        canvas.create_text(bx, by, text="CE", font=("Bebas Neue", 32), fill=accent)
+    
+    
+    
     canvas.create_text(W//2, H//2+30, text="TurboStrap", font=("Bebas Neue", 34), fill="#f5f5f5")
     canvas.create_text(W//2, H//2+58, text="Roblox Launcher", font=("Barlow", 12), fill="#a0a0a0")
     canvas.create_text(W//2, H//2+78, text=f"v{version}", font=("Barlow Condensed", 11), fill="#777777")
-    canvas.create_text(W//2, H-20, text="Initialising systems…", font=("Barlow", 9), fill="#dddddd")
+    status_text = canvas.create_text(W//2, H-20, text="Checking for updates…",
+        font=("Barlow", 9), fill="#dddddd")
+    canvas._status_text = status_text
+
+    def _do_version_check():
+        new_ver = check_for_update()
+        if new_ver:
+            canvas.itemconfig(status_text,
+                text=f"⚠  v{new_ver} available!",
+                fill="#f59e0b")
+        else:
+            canvas.itemconfig(status_text, text="✓  Up to date", fill="#00c850")
+
+    threading.Thread(target=_do_version_check, daemon=True).start()
     return splash
 
 
+    
 class TurboStrap(ctk.CTk):
     def __init__(self):
         init_app_icon()
@@ -1281,10 +1825,11 @@ class TurboStrap(ctk.CTk):
         self.minsize(860, 560)
         self.configure(fg_color=BG)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
-
+        global ACCENT
+        ACCENT = self.cfg.get("accent_color", ACCENT)
         self.withdraw()
         self._build()
-
+  
         self.splash = show_splash(self, ACCENT, APP_VERSION)
         self.after(3000, self._end_splash)
         self.iconbitmap(resource_path("turbostrap.ico"))
@@ -1298,25 +1843,51 @@ class TurboStrap(ctk.CTk):
         self.splash = None
         self.update_idletasks()
         w, h = 960, 620
-        x = (self.winfo_screenwidth()  - w) // 2
+        x = (self.winfo_screenwidth() - w) // 2
         y = (self.winfo_screenheight() - h) // 2
         self.geometry(f"{w}x{h}+{x}+{y}")
         self.deiconify()
         self.lift()
         self.focus_force()
+        self.after(500, self._check_update_and_prompt)
+
+    def _check_update_and_prompt(self):
+        def _worker():
+            new_ver = check_for_update()
+            if new_ver:
+                self.after(0, lambda v=new_ver: self._show_update_prompt(v))
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _show_update_prompt(self, v):
+        self.lift()
+        self.focus_force()
+        result = messagebox.askyesno(
+            "Update Available 🚀",
+            f"A new version of TurboStrap is available!\n\n"
+            f"  Current version:  v{APP_VERSION}\n"
+            f"  Latest version:    v{v}\n\n"
+            f"Would you like to download the latest version?"
+        )
+        if result:
+            webbrowser.open("https://github.com/turbostrap/Turbostrap-Launcher/releases")
+
+   
 
     def _build(self):
         self.content = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
         self.pages = {
             "LAUNCH":   LaunchPage(self.content, self.cfg),
             "SETTINGS": SettingsPage(self.content, self.cfg, self._refresh),
+            "THEME":    ThemePage(self.content, self.cfg, self._rebuild),
             "FFLAGS":   FFlagsPage(self.content, self.cfg),
+            "CUSTOM": CustomFlagsPage(self.content, self.cfg),
             "LOGS":     LogsPage(self.content),
             "ABOUT":    AboutPage(self.content),
         }
         self.sidebar = Sidebar(self, self._nav)
         self.sidebar.pack(side="left", fill="y")
-        ctk.CTkFrame(self, width=1, fg_color="#1a1a1a", corner_radius=0).pack(side="left", fill="y")
+        self.divider = ctk.CTkFrame(self, width=1, fg_color="#1a1a1a", corner_radius=0)
+        self.divider.pack(side="left", fill="y")
         self.content.pack(side="left", fill="both", expand=True)
         self._show("LAUNCH")
 
@@ -1330,7 +1901,16 @@ class TurboStrap(ctk.CTk):
 
     def _refresh(self):
         self.pages["LAUNCH"].refresh()
-
+    def _rebuild(self):
+        global ACCENT
+        ACCENT = self.cfg.get("accent_color", ACCENT)
+        for page in self.pages.values():
+            page.destroy()
+        self.content.destroy()
+        self.sidebar.destroy()
+        self.divider.destroy()
+        self._build()
+        self._show("THEME")
     def go_to_tray(self, roblox_proc):
         self.roblox_proc = roblox_proc
         self.withdraw()
@@ -1348,7 +1928,7 @@ class TurboStrap(ctk.CTk):
         if self.tray_icon is not None:
             return
         try:
-            image = Image.open(resource_path("myicon.ico"))
+            image = Image.open(resource_path("turbostrap.ico"))
         except Exception:
             image = Image.new("RGB", (32, 32), color=(30, 30, 30))
         menu = (
