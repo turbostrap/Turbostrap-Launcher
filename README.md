@@ -15,6 +15,9 @@ Turbostrap is a Third-Party Replacement of the Normal Roblox Bootstrapper and ad
 
 **A:** No, Turbostrap doesn't interact with the Roblox client in the same way that exploits do.
 
+> [!TIP]
+> Keep the standalone launcher in a designated folder to avoid accidental changes.
+
 ## Features
 - Super High Performance with Built-In Memory Optimisation
 - Works with any Windows 10/11 PC
